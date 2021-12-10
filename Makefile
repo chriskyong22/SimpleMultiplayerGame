@@ -1,7 +1,7 @@
 OUTPUT = client
 CFLAGS = -g -Wall -Wvla -I inc -D_REENTRANT
 LFLAGS = -L lib -lSDL2 -lSDL2_image -lSDL2_ttf
-PATH = INSERT PATH
+LD_PATH = PATH
 PORT = 16000
 
 %.o: %.c %.h
@@ -13,16 +13,16 @@ PORT = 16000
 all: $(OUTPUT)
 
 runclient: $(OUTPUT)
-	LD_LIBRARY_PATH=$(PATH) ./client localhost $(PORT)
+	LD_LIBRARY_PATH=$(LD_PATH) ./client localhost $(PORT)
 
 runclientC: $(OUTPUT)
-	LD_LIBRARY_PATH=$(PATH) ./client localhost $(PORT) 1
+	LD_LIBRARY_PATH=$(LD_PATH) ./client localhost $(PORT) 1
 	
 runclientR: $(OUTPUT)
-	LD_LIBRARY_PATH=$(PATH) ./client localhost $(PORT) 2
+	LD_LIBRARY_PATH=$(LD_PATH) ./client localhost $(PORT) 2
 
 runclientS: $(OUTPUT)
-	LD_LIBRARY_PATH=$(PATH) ./client localhost $(PORT) 3
+	LD_LIBRARY_PATH=$(LD_PATH) ./client localhost $(PORT) 3
 
 client: client.o
 	gcc $(CFLAGS) -o $@ $^ $(LFLAGS)
