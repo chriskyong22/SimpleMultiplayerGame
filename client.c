@@ -23,14 +23,6 @@
 // Number of cells vertically/horizontally in the grid
 #define GRIDSIZE 10
 
-#define START_OF_MESSAGE 10352040
-
-typedef struct
-{
-    int x;
-    int y;
-} Position;
-
 typedef enum
 {
     TILE_GRASS,
@@ -55,17 +47,14 @@ typedef enum
 } DIRECTION;
 
 typedef struct _playerInfo {
-    int playerID;
     int x; 
     int y;
     struct _playerInfo* next;
 } playerInfo;
-void printBoard();
-
 
 TILETYPE grid[GRIDSIZE][GRIDSIZE];
 
-Position playerPosition;
+playerInfo playerPosition;
 int score;
 int level;
 int numTomatoes;
@@ -75,21 +64,21 @@ bool shouldExit = false;
 
 TTF_Font* font;
 int clientfd;
-playerInfo* head = NULL;
 int AI = 0;
-playerInfo closestPlayer;
-playerInfo closestTomato;
-void moveRandom();
-void moveTowardsClosestPlayer();
-void moveTowardsClosestObject(int differenceHorizontal, int differenceVertical);
+
+playerInfo* head = NULL;
+
 int expectedPlayerPositionX = 0;
 int expectedPlayerPositionY = 0;
 int desync = 0;
-// get a random value in the range [0, 1]
-double rand01()
-{
-    return (double) rand() / (double) RAND_MAX;
-}
+
+playerInfo closestPlayer;
+playerInfo closestTomato;
+
+void moveRandom();
+void moveTowardsClosestPlayer();
+void moveTowardsClosestObject(int differenceHorizontal, int differenceVertical);
+void printBoard();
 
 /*
  * open_clientfd - Open connection to server at <hostname, port> and
@@ -170,18 +159,6 @@ void sendInt(int fd, int value) {
 }
 
 void processServerResponse() {
-	/*
-	int start = readInt(clientfd);
-	if (start != START_OF_MESSAGE) {
-		printf("Garbage: ");
-		while (start != START_OF_MESSAGE) {
-			printf("%d ", start);
-			start = readInt(clientfd);
-		}
-		printf("\n");
-		exit(0);
-	}
-	*/
     printf("Reading Player Position: ");
     playerPosition.x = readInt(clientfd);
     playerPosition.y = readInt(clientfd);
@@ -251,31 +228,6 @@ void processServerResponse() {
     printf("Finished processing\n");
 }
 
-void initGrid()
-{
-    for (int i = 0; i < GRIDSIZE; i++) {
-        for (int j = 0; j < GRIDSIZE; j++) {
-            double r = rand01();
-            if (r < 0.1) {
-                grid[i][j] = TILE_TOMATO;
-                numTomatoes++;
-            }
-            else
-                grid[i][j] = TILE_GRASS;
-        }
-    }
-
-    // force player's position to be grass
-    if (grid[playerPosition.x][playerPosition.y] == TILE_TOMATO) {
-        grid[playerPosition.x][playerPosition.y] = TILE_GRASS;
-        numTomatoes--;
-    }
-
-    // ensure grid isn't empty
-    while (numTomatoes == 0)
-        initGrid();
-}
-
 void initSDL()
 {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -307,9 +259,8 @@ void moveTo(int x, int y, DIRECTION direction)
         fprintf(stderr, "Invalid move attempted from (%d, %d) to (%d, %d)\n", playerPosition.x, playerPosition.y, x, y);
         return;
     }
-
-    playerPosition.x = x;
-    playerPosition.y = y;
+	expectedPlayerPositionX = x;
+	expectedPlayerPositionY = y;
     sendInt(clientfd, MOVE);
     sendInt(clientfd, direction);
 }
@@ -319,62 +270,46 @@ void moveTowardsClosestPlayer() {
 	int differenceHorizontal = playerPosition.x - closestPlayer.x;
 	int differenceVertical = playerPosition.y - closestPlayer.y;
 	if (differenceHorizontal < 0) {
-		sendInt(clientfd, MOVE);
-		sendInt(clientfd, RIGHT);
-		expectedPlayerPositionX++;
+		moveTo(playerPosition.x + 1, playerPosition.y, RIGHT);
 	}
 	
 	if (differenceHorizontal > 0) {
-		sendInt(clientfd, MOVE);
-		sendInt(clientfd, LEFT);
-		expectedPlayerPositionX--;
+		moveTo(playerPosition.x - 1, playerPosition.y, LEFT);
 	}
 	
 	if (differenceVertical < 0) {
-		sendInt(clientfd, MOVE);
-		sendInt(clientfd, DOWN);
-		expectedPlayerPositionY++;
+		moveTo(playerPosition.x, playerPosition.y + 1, DOWN);
 	}
 	
 	if (differenceVertical > 0) {
-		sendInt(clientfd, MOVE);
-		sendInt(clientfd, UP);
-		expectedPlayerPositionY--;
+		moveTo(playerPosition.x, playerPosition.y - 1, UP);
 	}
-	
+
 }
 
 void moveTowardsClosestObject(int differenceHorizontal, int differenceVertical) {
     printf("%d %d\n", differenceHorizontal, differenceVertical);
 	if (differenceHorizontal < 0) {
-		sendInt(clientfd, MOVE);
-		sendInt(clientfd, RIGHT);
 		printf("[S] Right\n");
-		expectedPlayerPositionX++;
+		moveTo(playerPosition.x + 1, playerPosition.y, RIGHT);
 		return;
 	}
 	
 	if (differenceHorizontal > 0) {
-		sendInt(clientfd, MOVE);
-		sendInt(clientfd, LEFT);
 		printf("[S] Left\n");
-		expectedPlayerPositionX--;
+		moveTo(playerPosition.x - 1, playerPosition.y, LEFT);
 		return;
 	}
 	
 	if (differenceVertical < 0) {
-		sendInt(clientfd, MOVE);
-		sendInt(clientfd, DOWN);
 		printf("[S] Down\n");
-		expectedPlayerPositionY++;
+		moveTo(playerPosition.x, playerPosition.y + 1, DOWN);
 		return;
 	}
 	
 	if (differenceVertical > 0) {
-		sendInt(clientfd, MOVE);
-		sendInt(clientfd, UP);
 		printf("[S] Up\n");
-		expectedPlayerPositionY--;
+		moveTo(playerPosition.x, playerPosition.y - 1, UP);
 		return;
 	}
 }
