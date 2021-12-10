@@ -1,0 +1,6 @@
+*.o
+server
+client
+csapp.c
+csapp.h
+
